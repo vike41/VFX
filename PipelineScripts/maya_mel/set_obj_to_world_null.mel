@@ -1,0 +1,2 @@
+string $obj[] = `ls -sl`;
+move -rpr 0 0 0 $obj;

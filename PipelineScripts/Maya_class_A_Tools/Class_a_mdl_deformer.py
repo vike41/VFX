@@ -5,8 +5,7 @@ import pymel.core as pm
 class DeformEdgeFlow():
 
     def __init__(self,
-                 input_component=[]):
-        # constructor
+                 input_component=None):
         self.input_component = input_component
 
     def select_component(self):

@@ -5,43 +5,36 @@ import os
 
 class DefineTextureForArnold(object):
     # Constructor
-    def __init__(self, name, path=None, targetShaderMark="MDL", targetShadingGroupMark="SG", targetShaderType="lambert",
-                 textureExtensions=('.png', '.exr' , '.tx')):
+    def __init__(self, name, path=None, target_shader_mark="HS", target_shading_group_mark="SGM", target_shader_type=("aiStandartSurface", "lambert"),
+                 texture_extensions=('.png', '.exr', '.tx'), maps=('BaseColor', 'Metallic', 'Rougness', 'Normal', 'Speclvl', 'Opacity', 'Emission')):
+
         self.path = path
-        self.targetShaderMark = targetShaderMark
-        self.targetShaderType = targetShaderType
-        self.textureExtensions = textureExtensions
-        self.targetShadingGroupMark = targetShadingGroupMark
+        self.targetShaderMark = target_shader_mark
+        self.targetShaderType = target_shader_type
+        self.textureExtensions = texture_extensions
+        self.targetShadingGroupMark = target_shading_group_mark
         self.name = name
+        self.maps = maps
 
-
-        self.defineShaderWithNodes()
-
-
-        #self.listFiles()
-        #self.findTexMaps()
-
-
-    def createShader(self):
-        print("SD", self.name)
+    def create_shader(self):
         sg = cmds.sets(name="%sSG" % self.name, empty=True, renderable=True, noSurfaceShader=True)
         return sg
 
-    def createMaterial(self, node_type="aiStandardSurface"):
+    def create_material(self, node_type="aiStandardSurface"):
         material = cmds.shadingNode(node_type, name=self.name, asShader=True)
         return material
 
-    def createFileTexture(self, map, name):
-        p2dName = 'p2d'+ name + map
-        fileTextureName = name + 'FileNode' + map
-        tex = pm.shadingNode('file', name=fileTextureName, asTexture=True, isColorManaged=True)
+    def create_file_texture(self, map, name):
+        p2d_name = 'p2d'+ name + map
+        file_texture_name = name + 'FileNode' + map
+        tex = pm.shadingNode('file', name=file_texture_name, asTexture=True, isColorManaged=True)
         cmds.setAttr(tex + '.uvTilingMode', 3)
         cmds.setAttr(tex + '.colorSpace', 'Utility-Raw', type='string')
 
-        if not pm.objExists(p2dName):
-            pm.shadingNode('place2dTexture', name=p2dName, asUtility=True)
+        if not pm.objExists(p2d_name):
+            pm.shadingNode('place2dTexture', name=p2d_name, asUtility=True)
 
-        p2d = pm.PyNode(p2dName)
+        p2d = pm.PyNode(p2d_name)
 
         pm.connectAttr(p2d.outUV, tex.uvCoord)
         pm.connectAttr(p2d.outUvFilterSize, tex.uvFilterSize)
@@ -64,128 +57,111 @@ class DefineTextureForArnold(object):
 
         return tex
 
-    def createColorCorrection(self, name):
+    def create_color_correction(self, name):
         #Need to fixed Normal Correction False ref in defineShaderWithNodes
         if name != 'Normal':
-            CCNode = cmds.shadingNode('aiColorCorrect', asShader=True, name=name + 'CC')
+            cc_node = cmds.shadingNode('aiColorCorrect', asShader=True, name=name + 'CC')
         else:
-            CCNode = 'noo'
-        return CCNode
+            cc_node = 'noo'
+        return cc_node
 
-    def createAiNormal(self):
-        NormaNode = cmds.shadingNode('aiNormalMap', asShader=True, name=self.name + 'createAiNormal')
-        return NormaNode
+    def create_ai_normal(self):
+        normal_node = cmds.shadingNode('aiNormalMap', asShader=True, name=self.name + 'createAiNormal')
+        return normal_node
 
     #-----------------Connect Nodes -------------------------
-    def connectMatToShader(self, matName, shaderName):
+    def connect_mat_to_shader(self, matName, shaderName):
         cmds.connectAttr("%s.outColor" % matName, "%s.surfaceShader" % shaderName)
 
-
-    def defineShaderWithNodes(self):
+    def define_shader_with_nodes(self):
+        #TODO Repair Logic, make more configurable
         name=self.name
-        mapList = ['BaseColor', 'Metallic', 'Rougness','Normal', 'Speclvl', 'Opacity', 'Emission' ]
-
-        material = self.createMaterial()
-        shader = self.createShader()
-        self.connectMatToShader(material, shader)
-        listFiles = self.listFiles()
-        print ('!ListFiles',listFiles )
-        existingMaps = self.defineExictingMaps(listFiles, mapList)
-
-        for index in existingMaps:
-            fileNode = self.createFileTexture(index, name)
-            Correction = self.createColorCorrection(index)
-            aiNormal = self.createAiNormal()
+        for index in existing_maps:
+            fileNode = self.create_file_texture(index, name)
+            Correction = self.create_color_correction(index)
+            aiNormal = self.create_ai_normal()
             if index == 'BaseColor':
                 cmds.connectAttr("%s.outColor" % Correction, "%s.baseColor" % material)
                 cmds.connectAttr("%s.outColor" % fileNode, "%s.input" % Correction)
-                fileTexChanel = self.findTexMaps(listFiles, index)
-                self.setNewPathFileNode (index, fileTexChanel)
-                print ("BaseCreated")
+                fileTexChanel = self.find_tex_maps(list_files, index)
+                self.set_new_path_file_node (index, fileTexChanel)
+                print ("Base is Created")
 
             elif index == 'Metallic':
                 cmds.connectAttr("%s.outAlpha" % Correction, "%s.metalness" % material)
                 cmds.connectAttr("%s.outColor" % fileNode, "%s.input" % Correction)
-                fileTexChanel = self.findTexMaps(listFiles, index)
-                self.setNewPathFileNode (index, fileTexChanel)
-                print ("MetallicCreated")
+                fileTexChanel = self.find_tex_maps(list_files, index)
+                self.set_new_path_file_node (index, fileTexChanel)
+                print ("Metallic is Created")
 
             elif index == 'Speclvl':
                 cmds.connectAttr("%s.outColor" % Correction, "%s.specularColor" % material)
                 cmds.connectAttr("%s.outColor" % fileNode, "%s.input" % Correction)
-                fileTexChanel = self.findTexMaps(listFiles, index)
-                self.setNewPathFileNode (index, fileTexChanel)
-                print ("SpeclvlCreted")
+                fileTexChanel = self.find_tex_maps(list_files, index)
+                self.set_new_path_file_node (index, fileTexChanel)
+                print ("Speclvl is Created")
 
             elif index == 'Rougness':
                 cmds.connectAttr("%s.outAlpha" % Correction, "%s.specularRoughness" % material)
                 cmds.connectAttr("%s.outColor" % fileNode, "%s.input" % Correction)
-                fileTexChanel = self.findTexMaps(listFiles, index)
-                self.setNewPathFileNode (index, fileTexChanel)
-                print ("RougnessCreted")
+                fileTexChanel = self.find_tex_maps(list_files, index)
+                self.set_new_path_file_node (index, fileTexChanel)
+                print ("Roughness is Created")
 
             elif index == 'Opacity':
                 cmds.connectAttr("%s.outColor" % Correction, "%s.opacity" % material)
                 cmds.connectAttr("%s.outColor" % fileNode, "%s.input" % Correction)
-                fileTexChanel = self.findTexMaps(listFiles, index)
-                self.setNewPathFileNode (index, fileTexChanel)
-                print ("OpacityCreted")
+                fileTexChanel = self.find_tex_maps(list_files, index)
+                self.set_new_path_file_node (index, fileTexChanel)
+                print ("Opacity is Created")
 
             elif index == 'Emission':
                 cmds.connectAttr("%s.outAlpha" % Correction, "%s.emission" % material)
                 cmds.connectAttr("%s.outColor" % fileNode, "%s.input" % Correction)
                 cmds.connectAttr("%s.outColor" % Correction, "%s.emissionColor" % material)
-                fileTexChanel = self.findTexMaps(listFiles, index)
-                self.setNewPathFileNode (index, fileTexChanel)
-                print ("EmissionCreted")
+                fileTexChanel = self.find_tex_maps(list_files, index)
+                self.set_new_path_file_node (index, fileTexChanel)
+                print ("Emission is Created")
 
             elif index == 'Normal':
                 cmds.connectAttr("%s.outValue" % aiNormal, "%s.normalCamera" % material)
                 cmds.connectAttr("%s.outColor" % fileNode, "%s.input" % aiNormal)
-                fileTexChanel = self.findTexMaps(listFiles, index)
-                self.setNewPathFileNode (index, fileTexChanel)
-                print ("NormalCreted")
+                fileTexChanel = self.find_tex_maps(list_files, index)
+                self.set_new_path_file_node (index, fileTexChanel)
+                print ("Normal is created")
                 #createFileTexture(index)
                 #cmds.connectAttr("%s.input" % Correction, "%s.outColor" % material)
                 #createAiNormal
             else:
-                pass
+                print ("implement Error")
+                return False
+            return True
 
-    def setNewPathFileNode(self, mapType, texName):
+    def set_new_path_file_node(self, map_type, tex_name):
+        file_node_name = self.name + "FileNode" + map_type
+        define_path = self.path + '/' + tex_name
+        cmds.setAttr(file_node_name + '.fileTextureName', define_path , type='string')
 
-        fileNodeName = self.name + "FileNode" + mapType
-        print ("FFF" , fileNodeName)
-        definePath = self.path + '/' + texName
-        print ("definePath" , definePath)
-        cmds.setAttr(fileNodeName + '.fileTextureName', definePath , type='string')
-
-
-    def findDummy (self):
-        pass
-    def assignMaps(self):
-        pass
-    def defineExictingMaps(self, list, maps):
-        print ("LIST: ", list)
-        print ("MAPS: ", maps)
+    def define_exicting_maps(self, maps_list):
         count = 0
-        foundedMapsList = []
+        founded_maps_list = []
 
-        for index in list:
-            for item in maps:
+        for index in maps_list:
+            for item in self.maps:
                 if item in index:
-                    foundedMapsList.append(item)
-                    count = count +1
+                    founded_maps_list.append(item)
+                    count = count + 1 # TODO Remove that dirt
+
                 else:
                     pass
                     #print ("Dont")
-        print ("foundedMapList", foundedMapsList)
+        print ("foundedMapList", founded_maps_list)
         #TODO Remove duplicated elements
-        exportetTypeMaps = set(foundedMapsList)
+        exportet_type_maps = set(founded_maps_list)
 
-        print ("exportetTypeMaps", exportetTypeMaps)
-        return exportetTypeMaps
+        return exportet_type_maps
 
-    def listFiles(self):
+    def list_files(self):
         directory = self.path
         files = []
         for filename in os.listdir(directory):
@@ -194,29 +170,31 @@ class DefineTextureForArnold(object):
         print ("List Files", files)
         return files
 
+    def find_tex_maps(self, tex_list, texture_chanel):
+        #TODO make it clean
+        item_found = []
+        try:
+            for item in tex_list:
+                if texture_chanel in item and self.name in item:
+                    # Item found, set the flag and break out of the loop
+                    item_found = item
+                    break
+                else:
+                    print('Nope')
+        except ValueError:
+            print ("can`t find any Textures")
 
-
-    def findTexMaps(self, texList, textureChanel):
-        itemFound = []
-        print("Tex List: ", texList)
-        print("textureChanel: ", textureChanel)
-        for item in texList:
-            if textureChanel in item and self.name in item:
-                # Item found, set the flag and break out of the loop
-                itemFound = item
-                print ("itemFound ", itemFound)
-                break
-            else:
-                pass
-                #print('Nope')
-
-
-        return itemFound
-
-
-
+        return item_found
 # Create an instance of the class
 
-
 if __name__ == "__main__":
-    new_instance = DefineTextureForArnold('TIEMetal', path=r'path')
+    DTFA = DefineTextureForArnold('TIEMetal', path=r'path')
+
+    shader = DTFA.create_shader()
+    material = DTFA.create_material()
+    DTFA.connect_mat_to_shader(material, shader)
+
+    listed_files = DTFA.list_files()
+    existing_Maps = DTFA.define_exicting_maps(listed_files)
+
+    create_instance = DTFA.define_shader_with_nodes()

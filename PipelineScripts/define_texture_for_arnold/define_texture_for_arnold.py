@@ -80,9 +80,9 @@ class DefineTextureForArnold(object):
     def define_shader_with_nodes(self, existing_maps, listed_files):
         # TODO Repair Logic, make more configurable
         for map in existing_maps:
+            print("map", map)
             file_node = self.create_file_texture(map, self.name)
             correction = self.create_color_correction(map)
-            ai_normal = self.create_ai_normal()
 
             if map == 'BaseColor':
                 cmds.connectAttr("%s.outColor" % correction, "%s.baseColor" % material)
@@ -128,15 +128,12 @@ class DefineTextureForArnold(object):
                 print ("Emission is Created")
 
             if map == 'Normal':
+                ai_normal = self.create_ai_normal()
                 cmds.connectAttr("%s.outValue" % ai_normal, "%s.normalCamera" % material)
                 cmds.connectAttr("%s.outColor" % file_node, "%s.input" % ai_normal)
                 fileTexChanel = self.find_tex_maps(listed_files, map)
                 self.set_new_path_file_node(map, fileTexChanel)
                 print ("Normal is created")
-
-            else:
-
-                print ("implement Error at:", map)
 
     def set_new_path_file_node(self, map_type, tex_name):
         file_node_name = self.name + "FileNode" + map_type
@@ -144,16 +141,13 @@ class DefineTextureForArnold(object):
         cmds.setAttr(file_node_name + '.fileTextureName', define_path, type='string')
 
     def define_exicting_maps(self, maps_list):
-        count = 0
         founded_maps_list = []
 
         for map in maps_list:
             for item in self.maps:
                 if item in map:
                     founded_maps_list.append(item)
-                    count = count + 1  # TODO Remove that dirt
-                else:
-                    pass
+
         exportet_type_maps = list(set(founded_maps_list))
 
         return exportet_type_maps
@@ -164,18 +158,13 @@ class DefineTextureForArnold(object):
         for filename in os.listdir(directory):
             if os.path.isfile(os.path.join(directory, filename)):
                 files.append(filename)
-        print ("List Files", files)
         return files
 
     def find_tex_maps(self, tex_list, texture_chanel):
-        print("tex_list", tex_list)
-        print ("texture_chanel", texture_chanel)
-        # TODO make it clean
         item_found = []
         try:
             for item in tex_list:
                 if texture_chanel in item and self.name in item:
-                    # Item found, set the flag and break out of the loop
                     item_found = item
         except ValueError:
             print ("can`t find any Textures")

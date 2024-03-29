@@ -7,6 +7,14 @@ if Dir not in sys.path:
 
 from define_texture_for_arnold import DefineTextureForArnold
 
-new_instance = DefineTextureForArnold('TIEMetal', path=r'path')
+DTFA = DefineTextureForArnold('TIEMetal',
+                              path=r'path')
 
+shader = DTFA.create_shader()
+material = DTFA.create_material()
+DTFA.connect_mat_to_shader(material, shader)
 
+listed_files = DTFA.list_files()
+existing_Maps = DTFA.define_exicting_maps(listed_files)
+
+DTFA.define_shader_with_nodes(existing_Maps, listed_files)
